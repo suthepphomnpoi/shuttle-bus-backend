@@ -1,0 +1,53 @@
+'use strict';
+
+const express = require('express');
+const { body } = require('express-validator');
+const employeeAuthController = require('../controllers/employeeAuth.controller');
+const validate = require('../middlewares/validate');
+
+const router = express.Router();
+
+router.post(
+    '/login',
+    [
+        body('email')
+            .trim()
+            .notEmpty().withMessage('กรุณากรอกอีเมล')
+            .isEmail().withMessage('รูปแบบอีเมลไม่ถูกต้อง'),
+        body('password')
+            .notEmpty().withMessage('กรุณากรอกรหัสผ่าน'),
+    ],
+    validate,
+    employeeAuthController.login
+);
+
+router.post(
+    '/register',
+    [
+        body('first_name')
+            .trim()
+            .notEmpty().withMessage('กรุณากรอกชื่อ')
+            .isLength({ max: 100 }).withMessage('ชื่อต้องไม่เกิน 50 ตัวอักษร'),
+        body('last_name')
+            .trim()
+            .notEmpty().withMessage('กรุณากรอกนามสกุล')
+            .isLength({ max: 100 }).withMessage('นามสกุลต้องไม่เกิน 50 ตัวอักษร'),
+        body('gender')
+            .trim()
+            .notEmpty().withMessage('กรุณาเลือกเพศ')
+            .isIn(['M', 'F']).withMessage('เพศต้องเป็น M หรือ F'),
+        body('email')
+            .trim()
+            .notEmpty().withMessage('กรุณากรอกอีเมล')
+            .isEmail().withMessage('รูปแบบอีเมลไม่ถูกต้อง'),
+        body('password')
+            .notEmpty().withMessage('กรุณากรอกรหัสผ่าน')
+            .isLength({ min: 8 }).withMessage('รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร'),
+    ],
+    validate,
+    employeeAuthController.register
+);
+
+router.get('/me', employeeAuthController.me);
+
+module.exports = router;

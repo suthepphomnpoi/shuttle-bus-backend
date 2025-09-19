@@ -75,3 +75,6 @@ prisma/*.db
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Oracle Instant Client binaries (do not commit large vendor libs)
+database/instantclient_*/
