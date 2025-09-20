@@ -2,7 +2,7 @@
 
 const bcrypt = require('bcryptjs');
 const db = require('../database/connection');
-const { signAccessToken } = require('../utils/jwt');
+const jwtUtil = require('../utils/jwt');
 const { setAuthCookie } = require('../utils/cookie');
 
 
@@ -20,16 +20,16 @@ exports.login = async (req, res, next) => {
         );
 
         const user = result?.rows?.[0];
-        console.log(user);
-        if (!user) return res.status(401).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
+
+        if (!user) return res.status(401).json({ success: false, message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
 
         const ok = await bcrypt.compare(password, user.passwordHash || '');
-        if (!ok) return res.status(401).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
+        if (!ok) return res.status(401).json({ success: false, message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
 
-        const token = signAccessToken({ sub: String(user.userId), email: user.email });
+        const token = jwtUtil.sign({ sub: String(user.userId), email: user.email });
         setAuthCookie(res, token);
 
-        res.json({ message: 'Login successful' });
+        res.json({ success: true, message: 'เข้าสู่ระบบสำเร็จ' });
     } catch (err) {
         next({ status: 500, message: 'Login failed: ' + err.message });
     }
@@ -44,7 +44,7 @@ exports.register = async (req, res, next) => {
             { email }
         );
         if (dup.rows?.length) {
-            return res.status(409).json({ error: 'อีเมลนี้ถูกใช้งานแล้ว' });
+            return res.status(409).json({ success: false, message: 'อีเมลนี้มีผู้ใช้แล้ว' });
         }
 
         const hash = await bcrypt.hash(password, 10);
@@ -84,7 +84,7 @@ exports.me = async (req, res, next) => {
         );
 
         const user = result?.rows?.[0];
-        if (!user) return res.status(404).json({ error: 'User not found' });
+        if (!user) return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้' });
 
         res.json({ user });
     } catch (err) {

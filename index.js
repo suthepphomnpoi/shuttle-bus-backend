@@ -12,8 +12,10 @@ const employeeAuthRoutes = require('./routes/employee-auth.route.js');
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors({ origin: "*", credentials: true }));
-
+app.use(cors({
+    origin: ['http://localhost:5174', 'http://localhost:5174'],
+    credentials: true,
+}))
 app.use(express.json());
 app.use(cookieParser());
 
@@ -26,7 +28,7 @@ app.use('/auth/employees/', employeeAuthRoutes);
 
 app.use((err, req, res, next) => {
     const status = err.status || 500;
-    res.status(status).json({ error: err.message || 'Internal Server Error' });
+    res.status(status).json({ success: false, message: err.message || 'Internal Server Error' });
 });
 
 

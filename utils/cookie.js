@@ -15,8 +15,6 @@ exports.setAuthCookie = (res, token) => {
 
     res.cookie('access_token', token, {
         httpOnly: true,
-        secure: true,
-        path: '/',
         maxAge: toMs(expiresIn),
     });
 };
