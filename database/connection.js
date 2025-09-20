@@ -19,7 +19,12 @@ function initOracleThickClient() {
     }
 }
 
-initOracleThickClient();
+// Try to init thick client, but don't crash the server if unavailable
+try {
+    initOracleThickClient();
+} catch (e) {
+    console.warn('[DB] Thick client not available, proceeding without Oracle Instant Client. Some DB features may not work.');
+}
 
 let poolPromise;
 
@@ -48,6 +53,8 @@ async function initPool() {
             return pool;
         }).catch((err) => {
             console.error('[DB] Failed to create connection pool:', err.message);
+            // Defer DB availability errors so the server can still run for non-DB endpoints
+            // Re-throw to callers when they actually execute queries
             throw err;
         });
     }
@@ -55,8 +62,15 @@ async function initPool() {
 }
 
 async function getConnection() {
-    const pool = await initPool();
-    return pool.getConnection();
+    try {
+        const pool = await initPool();
+        return pool.getConnection();
+    } catch (e) {
+        // Provide a clearer error when DB is not available
+        const err = new Error('Database is not available: ' + e.message);
+        err.cause = e;
+        throw err;
+    }
 }
 
 async function execute(sql, binds = [], options = {}) {

@@ -5,6 +5,7 @@ const { body } = require('express-validator');
 const userAuthController = require('../controllers/userAuth.controller');
 const validate = require('../middlewares/validate');
 const { authenticate } = require('../middlewares/auth');
+const { clearAuthCookie } = require('../utils/cookie');
 
 const router = express.Router();
 
@@ -51,5 +52,11 @@ router.post(
 );
 
 router.get('/me', authenticate, userAuthController.me);
+
+// Logout: clear auth cookie and return success
+router.post('/logout', (req, res) => {
+    clearAuthCookie(res);
+    res.json({ success: true, message: 'ออกจากระบบสำเร็จ' });
+});
 
 module.exports = router;
