@@ -2,7 +2,7 @@
 
 const bcrypt = require('bcryptjs');
 const db = require('../database/connection');
-const { signAccessToken } = require('../utils/jwt');
+const jwtUtil = require('../utils/jwt');
 const { setAuthCookie } = require('../utils/cookie');
 
 
@@ -25,7 +25,7 @@ exports.login = async (req, res, next) => {
         const ok = await bcrypt.compare(password, employee.passwordHash || '');
         if (!ok) return res.status(401).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
 
-        const token = signAccessToken({ sub: String(employee.employeeId), email: employee.email, role: 'employee' });
+        const token = jwtUtil.sign({ sub: String(employee.employeeId), email: employee.email, role: 'employee' });
         setAuthCookie(res, token);
 
         res.json({ message: 'Login successful' });
@@ -35,21 +35,20 @@ exports.login = async (req, res, next) => {
 };
 
 exports.register = async (req, res, next) => {
-    const { email, password, first_name, last_name, gender } = req.body;
+    const { email, password, first_name, last_name, gender, dept_id, position_id } = req.body;
     try {
         const dup = await db.execute(
             `SELECT 1 FROM mp_employees WHERE LOWER(email)=LOWER(:email)`,
             { email }
         );
-        if (dup.rows?.length) {
-            return res.status(409).json({ error: 'อีเมลนี้ถูกใช้งานแล้ว' });
-        }
+
+
 
         const hash = await bcrypt.hash(password, 10);
         await db.execute(
-            `INSERT INTO mp_employees (employee_id, email, password_hash, first_name, last_name, gender, created_at)
-                VALUES (seq_mp_employees.NEXTVAL, :email, :hash, :first_name, :last_name, :gender ,SYSDATE)`,
-            { email, hash, first_name, last_name, gender }
+            `INSERT INTO mp_employees (employee_id, email, password_hash, first_name, last_name, gender, dept_id, position_id, created_at)
+                VALUES (seq_mp_employees.NEXTVAL, :email, :hash, :first_name, :last_name, :gender, :dept_id, :position_id, SYSDATE)`,
+            { email, hash, first_name, last_name, gender, dept_id: Number(dept_id), position_id: Number(position_id) }
         );
 
         const rs = await db.execute(
@@ -60,18 +59,19 @@ exports.register = async (req, res, next) => {
         const newEmployeeId = rs.rows[0].EMPLOYEE_ID;
 
         res.status(201).json({
+            success: true,
             message: 'Register successful',
             employee: { employeeId: newEmployeeId, email }
         });
     } catch (err) {
-        next({ status: 500, message: 'Register failed: ' + err.message });
+        next({ success: false, message: 'Register failed: ' + err.message });
     }
 };
 
 exports.me = async (req, res, next) => {
     try {
         const employeeId = req.user?.sub;
-        if (!employeeId) return res.status(401).json({ error: 'Unauthorized' });
+        if (!employeeId) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
         const result = await db.execute(
             `SELECT employee_id AS "employeeId", email AS "email"
@@ -80,10 +80,10 @@ exports.me = async (req, res, next) => {
         );
 
         const employee = result?.rows?.[0];
-        if (!employee) return res.status(404).json({ error: 'Employee not found' });
+        if (!employee) return res.status(404).json({ success: false, message: 'Employee not found' });
 
         res.json({ employee });
     } catch (err) {
-        next({ status: 500, message: 'Failed to fetch profile: ' + err.message });
+        next({ success: false, message: 'Failed to fetch profile: ' + err.message });
     }
 };

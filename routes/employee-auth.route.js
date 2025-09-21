@@ -4,6 +4,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const employeeAuthController = require('../controllers/employeeAuth.controller');
 const validate = require('../middlewares/validate');
+const { authenticateEmployee } = require('../middlewares/auth');
 
 const router = express.Router();
 
@@ -36,6 +37,12 @@ router.post(
             .trim()
             .notEmpty().withMessage('กรุณาเลือกเพศ')
             .isIn(['M', 'F']).withMessage('เพศต้องเป็น M หรือ F'),
+        body('dept_id')
+            .notEmpty().withMessage('กรุณาเลือกแผนก')
+            .isInt({ min: 1 }).withMessage('dept_id ต้องเป็นตัวเลขมากกว่าศูนย์'),
+        body('position_id')
+            .notEmpty().withMessage('กรุณาเลือกตำแหน่ง')
+            .isInt({ min: 1 }).withMessage('position_id ต้องเป็นตัวเลขมากกว่าศูนย์'),
         body('email')
             .trim()
             .notEmpty().withMessage('กรุณากรอกอีเมล')
@@ -48,6 +55,6 @@ router.post(
     employeeAuthController.register
 );
 
-router.get('/me', employeeAuthController.me);
+router.get('/me', authenticateEmployee, employeeAuthController.me);
 
 module.exports = router;

@@ -78,7 +78,12 @@ async function execute(sql, binds = [], options = {}) {
     try {
         conn = await getConnection();
         const result = await conn.execute(sql, binds, options);
-        await conn.commit();
+        // Commit only for DML/DDL; avoid extra round-trips for SELECT
+        const verb = String(sql).trim().split(/\s+/)[0].toUpperCase();
+        const isMutating = ['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'CREATE', 'ALTER', 'DROP', 'TRUNCATE'].includes(verb);
+        if (isMutating) {
+            await conn.commit();
+        }
         return result;
     } finally {
         try { if (conn) await conn.close(); } catch { }
@@ -102,5 +107,26 @@ async function closePool() {
 module.exports = {
     initPool,
     execute,
+    withTransaction,
     closePool,
 };
+
+// Run multiple statements on a single connection in a transaction.
+// work: async ({ exec, conn }) => any
+// - exec(sql, binds, options) executes on the same connection
+// - commits on success, rollbacks on error
+async function withTransaction(work) {
+    let conn;
+    try {
+        conn = await getConnection();
+        const exec = (sql, binds = [], options = {}) => conn.execute(sql, binds, options);
+        const result = await work({ exec, conn });
+        await conn.commit();
+        return result;
+    } catch (e) {
+        try { if (conn) await conn.rollback(); } catch {}
+        throw e;
+    } finally {
+        try { if (conn) await conn.close(); } catch {}
+    }
+}
